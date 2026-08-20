@@ -22,13 +22,62 @@ from sqlalchemy import (
     func,
     select,
 )
+from sqlalchemy.engine import URL
 from sqlalchemy.orm import declarative_base, sessionmaker
 
 BASE_DIR = Path(__file__).resolve().parent
 DEFAULT_DB_PATH = BASE_DIR / "data" / "equipment_guard.db"
-DATABASE_URL = os.getenv("DATABASE_URL", "").strip() or f"sqlite:///{DEFAULT_DB_PATH.as_posix()}"
 
-if DATABASE_URL.startswith("sqlite"):
+
+def _build_database_url():
+    """Monta a conexão sem expor/recodificar a senha do PostgreSQL.
+
+    Prioridade:
+    1) DB_USER/DB_PASSWORD/DB_HOST (recomendado para Neon);
+    2) DATABASE_URL (compatibilidade);
+    3) SQLite local (somente desenvolvimento/contingência).
+    """
+    db_user = os.getenv("DB_USER", "").strip()
+    db_password = os.getenv("DB_PASSWORD", "")
+    db_host = os.getenv("DB_HOST", "").strip()
+
+    if db_user and db_password and db_host:
+        db_name = os.getenv("DB_NAME", "neondb").strip() or "neondb"
+        db_port_text = os.getenv("DB_PORT", "5432").strip() or "5432"
+        try:
+            db_port = int(db_port_text)
+        except ValueError:
+            db_port = 5432
+
+        query = {"sslmode": os.getenv("DB_SSLMODE", "require").strip() or "require"}
+        channel_binding = os.getenv("DB_CHANNEL_BINDING", "require").strip()
+        if channel_binding:
+            query["channel_binding"] = channel_binding
+
+        # URL.create trata caracteres especiais da senha corretamente.
+        return URL.create(
+            drivername="postgresql+psycopg",
+            username=db_user,
+            password=db_password,
+            host=db_host,
+            port=db_port,
+            database=db_name,
+            query=query,
+        )
+
+    raw_url = os.getenv("DATABASE_URL", "").strip()
+    if raw_url:
+        # Aceita a connection string original do Neon sem exigir edição manual.
+        if raw_url.startswith("postgresql://"):
+            raw_url = "postgresql+psycopg://" + raw_url[len("postgresql://"):]
+        return raw_url
+
+    return f"sqlite:///{DEFAULT_DB_PATH.as_posix()}"
+
+
+DATABASE_URL = _build_database_url()
+
+if isinstance(DATABASE_URL, str) and DATABASE_URL.startswith("sqlite"):
     if DATABASE_URL.startswith("sqlite:///"):
         raw_path = DATABASE_URL[len("sqlite:///"):]
         if raw_path and raw_path != ":memory:":
@@ -39,7 +88,7 @@ if DATABASE_URL.startswith("sqlite"):
             db_path.parent.mkdir(parents=True, exist_ok=True)
     connect_args = {"check_same_thread": False}
 else:
-    connect_args = {}
+    connect_args = {"connect_timeout": 15}
 
 engine = create_engine(DATABASE_URL, pool_pre_ping=True, connect_args=connect_args)
 SessionLocal = sessionmaker(bind=engine, expire_on_commit=False)
