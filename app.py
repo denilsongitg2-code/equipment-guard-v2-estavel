@@ -25,7 +25,10 @@ def config_value(name: str, default: str = "") -> str:
 
 # Segredos que os módulos não-Streamlit leem via ambiente.
 for _key in (
-    "DATABASE_URL", "MILVUS_TIMEOUT", "MILVUS_PAGE_SIZE", "MILVUS_MAX_PAGES",
+    "DATABASE_URL",
+    "DB_USER", "DB_PASSWORD", "DB_HOST", "DB_PORT", "DB_NAME",
+    "DB_SSLMODE", "DB_CHANNEL_BINDING",
+    "MILVUS_TIMEOUT", "MILVUS_PAGE_SIZE", "MILVUS_MAX_PAGES",
     "MILVUS_LOOKBACK_DAYS", "MILVUS_CLOSED_STATUSES", "DUPLICATE_BLOCK_THRESHOLD",
     "DUPLICATE_REVIEW_THRESHOLD",
 ):
