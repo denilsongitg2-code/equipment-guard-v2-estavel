@@ -1,1 +1,0 @@
-# Equipment Guard services package.
