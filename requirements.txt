@@ -1,0 +1,9 @@
+streamlit==1.60.0
+pandas==2.3.3
+openpyxl==3.1.5
+requests==2.34.2
+scikit-learn==1.9.0
+SQLAlchemy==2.0.52
+psycopg[binary]==3.3.4
+python-dotenv==1.2.3
+pyarrow==24.0.0
